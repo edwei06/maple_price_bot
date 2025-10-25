@@ -1,0 +1,564 @@
+{
+  "items": [
+    {
+      "id": "1102795",
+      "name": "AbsoLab Archer Cape",
+      "max_star": 25
+    },
+    {
+      "id": "1082638",
+      "name": "AbsoLab Archer Gloves",
+      "max_star": 25
+    },
+    {
+      "id": "1004424",
+      "name": "AbsoLab Archer Hood",
+      "max_star": 25
+    },
+    {
+      "id": "1073033",
+      "name": "AbsoLab Archer Shoes",
+      "max_star": 25
+    },
+    {
+      "id": "1152177",
+      "name": "AbsoLab Archer Shoulder",
+      "max_star": 25
+    },
+    {
+      "id": "1004425",
+      "name": "AbsoLab Bandit Cap",
+      "max_star": 25
+    },
+    {
+      "id": "1102796",
+      "name": "AbsoLab Bandit Cape",
+      "max_star": 25
+    },
+    {
+      "id": "1082639",
+      "name": "AbsoLab Bandit Gloves",
+      "max_star": 25
+    },
+    {
+      "id": "1073034",
+      "name": "AbsoLab Bandit Shoes",
+      "max_star": 25
+    },
+    {
+      "id": "1332274",
+      "name": "AbsoLab Blade Lord",
+      "max_star": 25
+    },
+    {
+      "id": "1482216",
+      "name": "AbsoLab Blast Knuckle",
+      "max_star": 25
+    },
+    {
+      "id": "1462239",
+      "name": "AbsoLab Crossbow",
+      "max_star": 25
+    },
+    {
+      "id": "1102775",
+      "name": "AbsoLab Knight Cape",
+      "max_star": 25
+    },
+    {
+      "id": "1082636",
+      "name": "AbsoLab Knight Gloves",
+      "max_star": 25
+    },
+    {
+      "id": "1004422",
+      "name": "AbsoLab Knight Helm",
+      "max_star": 25
+    },
+    {
+      "id": "1073030",
+      "name": "AbsoLab Knight Shoes",
+      "max_star": 25
+    },
+    {
+      "id": "1152174",
+      "name": "AbsoLab Knight Shoulder",
+      "max_star": 25
+    },
+    {
+      "id": "1102794",
+      "name": "AbsoLab Mage Cape",
+      "max_star": 25
+    },
+    {
+      "id": "1004423",
+      "name": "AbsoLab Mage Crown",
+      "max_star": 25
+    },
+    {
+      "id": "1082637",
+      "name": "AbsoLab Mage Gloves",
+      "max_star": 25
+    },
+    {
+      "id": "1073032",
+      "name": "AbsoLab Mage Shoes",
+      "max_star": 25
+    },
+    {
+      "id": "1152176",
+      "name": "AbsoLab Mage Shoulder",
+      "max_star": 25
+    },
+    {
+      "id": "1102797",
+      "name": "AbsoLab Pirate Cape",
+      "max_star": 25
+    },
+    {
+      "id": "1004426",
+      "name": "AbsoLab Pirate Fedora",
+      "max_star": 25
+    },
+    {
+      "id": "1082640",
+      "name": "AbsoLab Pirate Gloves",
+      "max_star": 25
+    },
+    {
+      "id": "1073035",
+      "name": "AbsoLab Pirate Shoes",
+      "max_star": 25
+    },
+    {
+      "id": "1152179",
+      "name": "AbsoLab Pirate Shoulder",
+      "max_star": 25
+    },
+    {
+      "id": "1492231",
+      "name": "AbsoLab Point Gun",
+      "max_star": 25
+    },
+    {
+      "id": "1212115",
+      "name": "AbsoLab Shining Rod",
+      "max_star": 25
+    },
+    {
+      "id": "1372222",
+      "name": "AbsoLab Spellsong Wand",
+      "max_star": 25
+    },
+    {
+      "id": "1022231",
+      "name": "Aquatic Letter Eye Accessory",
+      "max_star": 8
+    },
+    {
+      "id": "1022232",
+      "name": "Black Bean Mark",
+      "max_star": 20
+    },
+    {
+      "id": "1122076",
+      "name": "Chaos Horntail Necklace",
+      "max_star": 15
+    },
+    {
+      "id": "1003719",
+      "name": "Chaos Pierre Hat",
+      "max_star": 25
+    },
+    {
+      "id": "1003721",
+      "name": "Chaos Queen's Tiara",
+      "max_star": 25
+    },
+    {
+      "id": "1003722",
+      "name": "Chaos Vellum's Helm",
+      "max_star": 25
+    },
+    {
+      "id": "1003720",
+      "name": "Chaos Von Bon Helmet",
+      "max_star": 25
+    },
+    {
+      "id": "1012478",
+      "name": "Condensed Power Crystal",
+      "max_star": 10
+    },
+    {
+      "id": "1032241",
+      "name": "Dea Sidus Earring",
+      "max_star": 20
+    },
+    {
+      "id": "1122150",
+      "name": "Dominator Pendant",
+      "max_star": 20
+    },
+    {
+      "id": "1152110",
+      "name": "Dragon Tail Mage Shoulder",
+      "max_star": 25
+    },
+    {
+      "id": "1042257",
+      "name": "Eagle Eye Assassin Shirt",
+      "max_star": 25
+    },
+    {
+      "id": "1042255",
+      "name": "Eagle Eye Dunwitch Robe",
+      "max_star": 25
+    },
+    {
+      "id": "1042256",
+      "name": "Eagle Eye Ranger Cowl",
+      "max_star": 25
+    },
+    {
+      "id": "1042258",
+      "name": "Eagle Eye Wanderer Coat",
+      "max_star": 25
+    },
+    {
+      "id": "1042254",
+      "name": "Eagle Eye Warrior Armor",
+      "max_star": 25
+    },
+    {
+      "id": "1132296",
+      "name": "Enraged Zakum Belt",
+      "max_star": 25
+    },
+    {
+      "id": "1352293",
+      "name": "Evolving Death Sender Charm",
+      "max_star": 0
+    },
+    {
+      "id": "1352913",
+      "name": "Evolving Falcon Eye",
+      "max_star": 0
+    },
+    {
+      "id": "1352283",
+      "name": "Evolving Slashing Shadow",
+      "max_star": 0
+    },
+    {
+      "id": "1352273",
+      "name": "Evolving True Shot",
+      "max_star": 0
+    },
+    {
+      "id": "1352203",
+      "name": "Evolving Virtues Medal",
+      "max_star": 0
+    },
+    {
+      "id": "1352253",
+      "name": "Evolving White Gold Book <Epode>",
+      "max_star": 0
+    },
+    {
+      "id": "1332225",
+      "name": "Fafnir Damascus",
+      "max_star": 25
+    },
+    {
+      "id": "1382208",
+      "name": "Fafnir Mana Crown",
+      "max_star": 25
+    },
+    {
+      "id": "1372177",
+      "name": "Fafnir Mana Taker",
+      "max_star": 25
+    },
+    {
+      "id": "1482168",
+      "name": "Fafnir Perry Talon",
+      "max_star": 25
+    },
+    {
+      "id": "1472214",
+      "name": "Fafnir Risk Holder",
+      "max_star": 25
+    },
+    {
+      "id": "1452205",
+      "name": "Fafnir Wind Chaser",
+      "max_star": 25
+    },
+    {
+      "id": "1462193",
+      "name": "Fafnir Windwing Shooter",
+      "max_star": 25
+    },
+    {
+      "id": "1492179",
+      "name": "Fafnir Zeliska",
+      "max_star": 25
+    },
+    {
+      "id": "1152111",
+      "name": "Falcon Wing Sentinel Shoulder",
+      "max_star": 25
+    },
+    {
+      "id": "1190301",
+      "name": "Gold Maple Leaf Emblem",
+      "max_star": 0
+    },
+    {
+      "id": "1132272",
+      "name": "Golden Clover Belt",
+      "max_star": 25
+    },
+    {
+      "id": "1402180",
+      "name": "Liberated Kaiserium",
+      "max_star": 25
+    },
+    {
+      "id": "1152108",
+      "name": "Lionheart Battle Shoulder",
+      "max_star": 25
+    },
+    {
+      "id": "1122254",
+      "name": "Mechanator Pendant",
+      "max_star": 15
+    },
+    {
+      "id": "1132324",
+      "name": "Neophyte Belt",
+      "max_star": 8
+    },
+    {
+      "id": "1103691",
+      "name": "Neophyte Cloak",
+      "max_star": 8
+    },
+    {
+      "id": "1032339",
+      "name": "Neophyte Earrings",
+      "max_star": 8
+    },
+    {
+      "id": "1022334",
+      "name": "Neophyte Eye Accessory",
+      "max_star": 8
+    },
+    {
+      "id": "1012825",
+      "name": "Neophyte Mark",
+      "max_star": 8
+    },
+    {
+      "id": "1122446",
+      "name": "Neophyte Pendant",
+      "max_star": 8
+    },
+    {
+      "id": "1113334",
+      "name": "Neophyte Ring",
+      "max_star": 8
+    },
+    {
+      "id": "1152223",
+      "name": "Neophyte Shoulders",
+      "max_star": 8
+    },
+    {
+      "id": "1113282",
+      "name": "Noble Ifia's Ring",
+      "max_star": 15
+    },
+    {
+      "id": "1022277",
+      "name": "Papulatus Mark",
+      "max_star": 25
+    },
+    {
+      "id": "1152112",
+      "name": "Raven Horn Chaser Shoulder",
+      "max_star": 25
+    },
+    {
+      "id": "1003800",
+      "name": "Royal Assassin Hood",
+      "max_star": 25
+    },
+    {
+      "id": "1152170",
+      "name": "Royal Black Metal Shoulder",
+      "max_star": 15
+    },
+    {
+      "id": "1003798",
+      "name": "Royal Dunwitch Hat",
+      "max_star": 25
+    },
+    {
+      "id": "1003799",
+      "name": "Royal Ranger Beret",
+      "max_star": 25
+    },
+    {
+      "id": "1072975",
+      "name": "Royal Von Leon Chaser Boots",
+      "max_star": 20
+    },
+    {
+      "id": "1102716",
+      "name": "Royal Von Leon Chaser Cape",
+      "max_star": 20
+    },
+    {
+      "id": "1082616",
+      "name": "Royal Von Leon Chaser Hands",
+      "max_star": 20
+    },
+    {
+      "id": "1004237",
+      "name": "Royal Von Leon Chaser Helm",
+      "max_star": 20
+    },
+    {
+      "id": "1072973",
+      "name": "Royal Von Leon Mage Boots",
+      "max_star": 20
+    },
+    {
+      "id": "1102714",
+      "name": "Royal Von Leon Mage Cape",
+      "max_star": 20
+    },
+    {
+      "id": "1082614",
+      "name": "Royal Von Leon Mage Hands",
+      "max_star": 20
+    },
+    {
+      "id": "1004235",
+      "name": "Royal Von Leon Magician Helm",
+      "max_star": 20
+    },
+    {
+      "id": "1072974",
+      "name": "Royal Von Leon Sentinel Boots",
+      "max_star": 20
+    },
+    {
+      "id": "1102715",
+      "name": "Royal Von Leon Sentinel Cape",
+      "max_star": 20
+    },
+    {
+      "id": "1082615",
+      "name": "Royal Von Leon Sentinel Hands",
+      "max_star": 20
+    },
+    {
+      "id": "1004236",
+      "name": "Royal Von Leon Sentinel Helm",
+      "max_star": 20
+    },
+    {
+      "id": "1072976",
+      "name": "Royal Von Leon Skipper Boots",
+      "max_star": 20
+    },
+    {
+      "id": "1102717",
+      "name": "Royal Von Leon Skipper Cape",
+      "max_star": 20
+    },
+    {
+      "id": "1082617",
+      "name": "Royal Von Leon Skipper Hands",
+      "max_star": 20
+    },
+    {
+      "id": "1004238",
+      "name": "Royal Von Leon Skipper Helm",
+      "max_star": 20
+    },
+    {
+      "id": "1072972",
+      "name": "Royal Von Leon Warrior Boots",
+      "max_star": 20
+    },
+    {
+      "id": "1102713",
+      "name": "Royal Von Leon Warrior Cape",
+      "max_star": 20
+    },
+    {
+      "id": "1082613",
+      "name": "Royal Von Leon Warrior Hands",
+      "max_star": 20
+    },
+    {
+      "id": "1004234",
+      "name": "Royal Von Leon Warrior Helm",
+      "max_star": 20
+    },
+    {
+      "id": "1003801",
+      "name": "Royal Wanderer Hat",
+      "max_star": 25
+    },
+    {
+      "id": "1003797",
+      "name": "Royal Warrior Helm",
+      "max_star": 25
+    },
+    {
+      "id": "1152113",
+      "name": "Shark Tooth Skipper Shoulder",
+      "max_star": 25
+    },
+    {
+      "id": "1113149",
+      "name": "Silver Blossom Ring",
+      "max_star": 10
+    },
+    {
+      "id": "1062168",
+      "name": "Trixter Assassin Pants",
+      "max_star": 25
+    },
+    {
+      "id": "1062166",
+      "name": "Trixter Dunwitch Pants",
+      "max_star": 25
+    },
+    {
+      "id": "1062167",
+      "name": "Trixter Ranger Pants",
+      "max_star": 25
+    },
+    {
+      "id": "1062169",
+      "name": "Trixter Wanderer Pants",
+      "max_star": 25
+    },
+    {
+      "id": "1062165",
+      "name": "Trixter Warrior Pants",
+      "max_star": 25
+    },
+    {
+      "id": "1032136",
+      "name": "Will o’ the Wisps",
+      "max_star": 20
+    }
+  ]
+}
