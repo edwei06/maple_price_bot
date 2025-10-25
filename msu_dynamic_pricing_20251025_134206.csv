@@ -1,0 +1,4 @@
+ts_utc,item_id,upgrade_type,upgrade_subtype,from_star,to_star,close_price,lowest_price,highest_price,enhancement_count,timeframe,url
+2025-10-25T05:42:17.486872+00:00,1032136,1,5062009,,,57555.444532,0.0,0.0,,20m,https://msu.io/navigator/item/1032136?itemUpgrade=0&itemUpgradeSubType=5062009&itemUpgradeType=1
+2025-10-25T05:42:20.464523+00:00,1032136,1,5062010,,,110441.612557,0.0,0.0,,20m,https://msu.io/navigator/item/1032136?itemUpgrade=0&itemUpgradeSubType=5062010&itemUpgradeType=1
+2025-10-25T05:42:23.495628+00:00,1032136,1,5062500,,,54406.121211,0.0,0.0,,20m,https://msu.io/navigator/item/1032136?itemUpgrade=0&itemUpgradeSubType=5062500&itemUpgradeType=1
