@@ -1,12 +1,12 @@
 # msu_dynamic_pricing_scraper.py
 # -*- coding: utf-8 -*-
 """
-MSU Navigator Dynamic Pricing 抓取器
-升級內容：
-- mode: 'star' / 'cube' / 'both'（同時抓 Star Force 與 Cubes）
+MSU Navigator Dynamic Pricing 抓取器（升級版）
+- mode: 'star' / 'cube' / 'both'
 - 名稱↔ID↔最大星數 本地索引（items_index.json）
-- 自動星數：索引優先，缺少時從物品頁解析 Max Starforce（.MaxStarforce_container__Knt02）
-- 多裝備批次，單一 Playwright Context，提高穩定性/效率
+- 自動星數：索引優先，缺少時從物品頁解析 Max Starforce（class 含 'MaxStarforce_container__'）
+- 多裝備批次；穩定抓取（輪詢+必要reload+暖機）
+- ✅ 新增：price_stats 統計表（last_close / all_time_high / all_time_low / samples）自動維護
 """
 
 import os
@@ -38,11 +38,11 @@ CUBE_PRESETS = {
 class DPRecord:
     ts_utc: str
     item_id: str
-    item_name: Optional[str]          # 新增：方便輸出/分類
+    item_name: Optional[str]          # 方便輸出/分類/統計顯示
     upgrade_type: int                 # 0 = Star Force, 1 = Potential/Cube
     upgrade_subtype: str              # 5062009/5062010/5062500 ...（Star Force 為空字串）
-    from_star: Optional[int]          # Cubes 可為 None
-    to_star: Optional[int]            # Cubes 可為 None
+    from_star: Optional[int]          # Cubes 可為 None（統計時以 -1 對應）
+    to_star: Optional[int]            # Cubes 可為 None（統計時以 -1 對應）
     close_price: Optional[float]
     lowest_price: Optional[float]
     highest_price: Optional[float]
@@ -54,7 +54,7 @@ class DPRecord:
 
 class ItemIndex:
     """
-    索引 JSON 結構（建議）：
+    索引 JSON 結構建議：
     {
       "items": [
         {"id":"1032136","name":"Will o’ the Wisps","max_star":22},
@@ -82,15 +82,12 @@ class ItemIndex:
                 pass
 
     def resolve_name(self, name: str) -> Optional[Dict[str, Any]]:
-        if not name:
-            return None
-        return self.items.get(name.strip().lower())
+        return self.items.get((name or "").strip().lower())
 
     def get_by_id(self, iid: str) -> Optional[Dict[str, Any]]:
-        return self.by_id.get(iid)
+        return self.by_id.get((iid or "").strip())
 
     def upsert(self, iid: str, name: Optional[str], max_star: Optional[int]):
-        # 以 id 為主鍵進行更新
         rec = self.by_id.get(iid, {"id": iid, "name": name or "", "max_star": None})
         if name:
             rec["name"] = name
@@ -101,11 +98,12 @@ class ItemIndex:
             self.items[rec["name"].lower()] = rec
 
     def dump(self):
+        if not self.path:
+            return
         out = {"items": sorted(self.by_id.values(), key=lambda r: (r.get("name") or "").lower())}
-        if self.path:
-            self.path.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+        self.path.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
 
-# ===================== 工具函式 =====================
+# ===================== 小工具 =====================
 
 NUM_RE = re.compile(r"[-+]?\d{1,3}(?:,\d{3})*(?:\.\d+)?|[-+]?\d+(?:\.\d+)?")
 
@@ -131,7 +129,7 @@ def build_url(item_id: str, upgrade_type: int, upgrade_subtype: str, from_star: 
         f"&itemUpgradeType={upgrade_type}"
     )
 
-# ===================== DP 定位/取值（沿用你穩定版） =====================
+# ===================== Dynamic Pricing 區塊解析 =====================
 
 def wait_dp_ready(page):
     for s in ["text=Dynamic Pricing", "text=動態定價", "text=Close Price"]:
@@ -223,7 +221,7 @@ def extract_four_tiles(page):
 
     return close_v, low_v, high_v, enh_v
 
-# ===================== 解析：單段抓取 & 最大星數偵測 =====================
+# ===================== 抓取（單段） =====================
 
 @retry(
     reraise=True,
@@ -270,18 +268,13 @@ def scrape_one_interval(page, url: str, timeframe: str,
     return last_vals
 
 def detect_max_star_from_page(page, item_id: str) -> Optional[int]:
-    """
-    從物品頁解析最大星數。
-    你提供的 class: "Bubble_container__pW9y1 MaxStarforce_container__Knt02"
-    我們先找 '.MaxStarforce_container__' 前綴（避免哈希變化），或 'Max Starforce' 文字鄰近數字。
-    """
     url = f"https://msu.io/navigator/item/{item_id}"
     try:
         page.goto(url, wait_until="domcontentloaded", timeout=90_000)
     except Exception:
         return None
 
-    # 方案 A：class 前綴
+    # A：class 前綴
     try:
         node = page.locator("[class*='MaxStarforce_container__']").first
         node.wait_for(state="visible", timeout=5000)
@@ -292,7 +285,7 @@ def detect_max_star_from_page(page, item_id: str) -> Optional[int]:
     except Exception:
         pass
 
-    # 方案 B：文字錨點
+    # B：文字錨點
     for label in ["Max Starforce", "Max Star Force", "星力上限", "最大星數", "最大星数"]:
         try:
             n = page.get_by_text(label, exact=False).first
@@ -306,78 +299,137 @@ def detect_max_star_from_page(page, item_id: str) -> Optional[int]:
 
     return None
 
-# ===================== 儲存 =====================
-def _ensure_schema(conn: sqlite3.Connection):
-    """
-    檢查/建立 dynamic_pricing 資料表結構。
-    若表已存在且缺欄位，動態以 ALTER TABLE 方式補欄位（不破壞舊資料）。
-    """
+# ===================== DB Schema & 寫入/統計 =====================
+
+def _ensure_dp_schema(conn: sqlite3.Connection):
     cur = conn.cursor()
-    # 表是否存在
     cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='dynamic_pricing'")
-    row = cur.fetchone()
-
-    full_schema_sql = """
-    CREATE TABLE IF NOT EXISTS dynamic_pricing (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        ts_utc TEXT,
-        item_id TEXT,
-        item_name TEXT,
-        upgrade_type INTEGER,
-        upgrade_subtype TEXT,
-        from_star INTEGER,
-        to_star INTEGER,
-        close_price REAL,
-        lowest_price REAL,
-        highest_price REAL,
-        enhancement_count REAL,
-        timeframe TEXT,
-        url TEXT
-    )
-    """
-
-    if not row:
-        # 全新建立
-        cur.execute(full_schema_sql)
+    if not cur.fetchone():
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS dynamic_pricing (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts_utc TEXT,
+            item_id TEXT,
+            item_name TEXT,
+            upgrade_type INTEGER,
+            upgrade_subtype TEXT,
+            from_star INTEGER,
+            to_star INTEGER,
+            close_price REAL,
+            lowest_price REAL,
+            highest_price REAL,
+            enhancement_count REAL,
+            timeframe TEXT,
+            url TEXT
+        )""")
         conn.commit()
+    else:
+        cur.execute("PRAGMA table_info(dynamic_pricing)")
+        existing_cols = {r[1] for r in cur.fetchall()}
+        desired_cols = [
+            ("ts_utc","TEXT"),("item_id","TEXT"),("item_name","TEXT"),("upgrade_type","INTEGER"),
+            ("upgrade_subtype","TEXT"),("from_star","INTEGER"),("to_star","INTEGER"),
+            ("close_price","REAL"),("lowest_price","REAL"),("highest_price","REAL"),
+            ("enhancement_count","REAL"),("timeframe","TEXT"),("url","TEXT"),
+        ]
+        for col, coltype in desired_cols:
+            if col not in existing_cols:
+                cur.execute(f"ALTER TABLE dynamic_pricing ADD COLUMN {col} {coltype}")
+        conn.commit()
+
+def _ensure_stats_schema(conn: sqlite3.Connection):
+    cur = conn.cursor()
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='price_stats'")
+    if not cur.fetchone():
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS price_stats (
+            item_id TEXT,
+            item_name TEXT,
+            upgrade_type INTEGER,
+            upgrade_subtype TEXT,
+            from_star INTEGER DEFAULT -1,
+            to_star INTEGER DEFAULT -1,
+            timeframe TEXT,
+            last_ts_utc TEXT,
+            last_close REAL,
+            all_time_high REAL,
+            all_time_low REAL,
+            samples INTEGER DEFAULT 0,
+            PRIMARY KEY (item_id, upgrade_type, upgrade_subtype, from_star, to_star, timeframe)
+        )""")
+        conn.commit()
+    else:
+        cur.execute("PRAGMA table_info(price_stats)")
+        existing_cols = {r[1] for r in cur.fetchall()}
+        desired_cols = [
+            ("item_id","TEXT"),("item_name","TEXT"),("upgrade_type","INTEGER"),("upgrade_subtype","TEXT"),
+            ("from_star","INTEGER"),("to_star","INTEGER"),("timeframe","TEXT"),
+            ("last_ts_utc","TEXT"),("last_close","REAL"),
+            ("all_time_high","REAL"),("all_time_low","REAL"),
+            ("samples","INTEGER"),
+        ]
+        for col, coltype in desired_cols:
+            if col not in existing_cols:
+                cur.execute(f"ALTER TABLE price_stats ADD COLUMN {col} {coltype}")
+        conn.commit()
+
+def _upsert_stats(conn: sqlite3.Connection, rows: List[DPRecord]):
+    """
+    針對每筆 close_price，更新統計表 price_stats：
+    key = (item_id, upgrade_type, upgrade_subtype, from_star, to_star, timeframe)
+    Star Force: from/to 為實際星段
+    Cubes: from/to 固定 -1
+    """
+    if not rows:
         return
+    _ensure_stats_schema(conn)
+    cur = conn.cursor()
 
-    # 已存在：檢查欄位，缺的就補
-    cur.execute("PRAGMA table_info(dynamic_pricing)")
-    existing_cols = {r[1] for r in cur.fetchall()}  # r[1] 是欄位名稱
-
-    # 目標欄位與型別（有缺就補）
-    desired_cols = [
-        ("ts_utc", "TEXT"),
-        ("item_id", "TEXT"),
-        ("item_name", "TEXT"),
-        ("upgrade_type", "INTEGER"),
-        ("upgrade_subtype", "TEXT"),
-        ("from_star", "INTEGER"),
-        ("to_star", "INTEGER"),
-        ("close_price", "REAL"),
-        ("lowest_price", "REAL"),
-        ("highest_price", "REAL"),
-        ("enhancement_count", "REAL"),
-        ("timeframe", "TEXT"),
-        ("url", "TEXT"),
-    ]
-
-    for col, coltype in desired_cols:
-        if col not in existing_cols:
-            cur.execute(f"ALTER TABLE dynamic_pricing ADD COLUMN {col} {coltype}")
-
-    conn.commit()
-
-def save_sqlite(db_path: str, rows):
+    sql = """
+    INSERT INTO price_stats (
+        item_id,item_name,upgrade_type,upgrade_subtype,from_star,to_star,timeframe,
+        last_ts_utc,last_close,all_time_high,all_time_low,samples
+    )
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+    ON CONFLICT(item_id, upgrade_type, upgrade_subtype, from_star, to_star, timeframe)
+    DO UPDATE SET
+        item_name = COALESCE(excluded.item_name, price_stats.item_name),
+        last_ts_utc = excluded.last_ts_utc,
+        last_close  = excluded.last_close,
+        all_time_high = CASE
+            WHEN price_stats.all_time_high IS NULL THEN excluded.last_close
+            WHEN excluded.last_close IS NULL THEN price_stats.all_time_high
+            ELSE MAX(price_stats.all_time_high, excluded.last_close)
+        END,
+        all_time_low = CASE
+            WHEN price_stats.all_time_low IS NULL THEN excluded.last_close
+            WHEN excluded.last_close IS NULL THEN price_stats.all_time_low
+            ELSE MIN(price_stats.all_time_low, excluded.last_close)
+        END,
+        samples = price_stats.samples + CASE WHEN excluded.last_close IS NULL THEN 0 ELSE 1 END
     """
-    先確保/遷移 schema，再批次寫入資料。
-    """
+
+    payload = []
+    for r in rows:
+        if r.close_price is None:
+            # 不更新統計（避免把 None 當現價）
+            continue
+        fs = r.from_star if r.from_star is not None else -1
+        ts = r.to_star if r.to_star is not None else -1
+        payload.append((
+            r.item_id, r.item_name, r.upgrade_type, (r.upgrade_subtype or ""), fs, ts, r.timeframe,
+            r.ts_utc, r.close_price, r.close_price, r.close_price, 1
+        ))
+    if payload:
+        cur.executemany(sql, payload)
+        conn.commit()
+
+def save_sqlite(db_path: str, rows: List[DPRecord]):
     if not rows:
         return
     conn = sqlite3.connect(db_path)
     try:
-        _ensure_schema(conn)
+        _ensure_dp_schema(conn)
         cur = conn.cursor()
         cur.executemany("""
         INSERT INTO dynamic_pricing (
@@ -385,11 +437,13 @@ def save_sqlite(db_path: str, rows):
             close_price,lowest_price,highest_price,enhancement_count,timeframe,url
         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, [(
-            r.ts_utc, r.item_id, getattr(r, "item_name", None), r.upgrade_type, r.upgrade_subtype,
-            r.from_star, r.to_star, r.close_price, r.lowest_price, r.highest_price,
-            r.enhancement_count, r.timeframe, r.url
+            r.ts_utc, r.item_id, r.item_name, r.upgrade_type, r.upgrade_subtype, r.from_star, r.to_star,
+            r.close_price, r.lowest_price, r.highest_price, r.enhancement_count, r.timeframe, r.url
         ) for r in rows])
         conn.commit()
+
+        # ✅ 同步更新統計表
+        _upsert_stats(conn, rows)
     finally:
         conn.close()
 
@@ -419,8 +473,8 @@ def save_csv(csv_path: str, rows: List[DPRecord]):
 # ===================== 主流程（支援 BOTH + 名稱/索引 + 自動星數） =====================
 
 def run_batch(
-    item_ids: List[str],                     # 這裡可傳「IDs」或「Names」（names_mode=True 時）
-    upgrade_type: int,                       # 保留舊參數（0/1），若使用 mode='both' 此值會被忽略
+    item_ids: List[str],                     # 可傳 ID 或 Name（names_mode=True）
+    upgrade_type: int,                       # 舊參數保留；mode='both' 會忽略它
     cube_subtypes: Optional[List[str]],
     star_range: Tuple[int, int],
     timeframe: str,
@@ -442,9 +496,7 @@ def run_batch(
     auto_star: bool = False,                 # True 則每件裝備用索引/頁面自動取最大星數
 ) -> List[DPRecord]:
 
-    # 索引初始化
     index = ItemIndex(Path(index_path) if index_path else None)
-
     results: List[DPRecord] = []
 
     with sync_playwright() as p:
@@ -468,8 +520,8 @@ def run_batch(
 
         page = context.new_page()
 
-        # 將輸入轉成 [(id, name)]，names_mode=True 時透過索引解析
-        resolved_items: List[Tuple[str, Optional[str]]] = []
+        # 將輸入轉成 [(id, name)]
+        resolved: List[Tuple[str, Optional[str]]] = []
         for token in item_ids:
             token = token.strip()
             if not token:
@@ -477,54 +529,47 @@ def run_batch(
             if names_mode:
                 rec = index.resolve_name(token)
                 if rec:
-                    resolved_items.append((rec["id"], rec.get("name")))
+                    resolved.append((rec["id"], rec.get("name")))
                 else:
-                    print(f"[WARN] 名稱未在索引中：{token}（可補到 items_index.json）")
+                    print(f"[WARN] 名稱未在索引中：{token}")
             else:
-                # 直接當作 ID；若索引中有名稱，帶上
                 rec = index.get_by_id(token)
-                resolved_items.append((token, rec.get("name") if rec else None))
+                resolved.append((token, rec.get("name") if rec else None))
 
-        if not resolved_items:
+        if not resolved:
             print("[ERROR] 沒有可處理的項目。")
             context.close(); browser.close()
             return []
 
-        # Cubes 子型態（用於 cube / both）
         if cube_subtypes is None:
             cube_subtypes = list(CUBE_PRESETS.values())
 
-        # 逐件裝備處理
-        for item_id, item_name in resolved_items:
+        for item_id, item_name in resolved:
             print(f"\n===== ITEM {item_id} ({item_name or 'n/a'}) =====")
 
-            # 取得最大星數（auto_star=True）
+            # 自動星數
             if auto_star:
                 max_star = None
-                # 1) 索引有就用
                 rec = index.get_by_id(item_id)
                 if rec and isinstance(rec.get("max_star"), int):
                     max_star = rec["max_star"]
-                # 2) 索引沒有 → 物品頁解析
                 if max_star is None:
                     ms = detect_max_star_from_page(page, item_id)
                     if ms:
                         max_star = ms
-                        # 回寫索引（名稱若未知，保持現狀）
                         index.upsert(item_id, item_name, max_star)
                         print(f"[AutoStar] 解析到最大星數 {max_star} 並寫入索引。")
                     else:
                         print("[AutoStar] 未能解析最大星數，改用使用者提供的 star_range。")
 
-                # 套用 star_range
                 if max_star:
-                    sf_from, sf_to = 0, max_star - 1  # e.g. 22 星 → 0→21 段
+                    sf_from, sf_to = 0, max_star - 1
                 else:
                     sf_from, sf_to = star_range
             else:
                 sf_from, sf_to = star_range
 
-            # 暖機一次
+            # 暖機
             if warmup:
                 warm_url = build_url(item_id, 0, "", sf_from)
                 try:
@@ -535,8 +580,8 @@ def run_batch(
                 except Exception:
                     pass
 
-            # === Star Force ===
-            if mode in ("star", "both"):
+            # Star
+            if mode in ("star","both"):
                 for fs in range(sf_from, sf_to + 1):
                     url = build_url(item_id, 0, "", fs)
                     try:
@@ -551,27 +596,19 @@ def run_batch(
 
                     rec = DPRecord(
                         ts_utc=datetime.now(timezone.utc).isoformat(),
-                        item_id=item_id,
-                        item_name=item_name,
-                        upgrade_type=0,
-                        upgrade_subtype="",
-                        from_star=fs,
-                        to_star=fs + 1,
-                        close_price=close_v,
-                        lowest_price=low_v,
-                        highest_price=high_v,
-                        enhancement_count=enh_v,
-                        timeframe=timeframe,
-                        url=url,
+                        item_id=item_id, item_name=item_name,
+                        upgrade_type=0, upgrade_subtype="",
+                        from_star=fs, to_star=fs+1,
+                        close_price=close_v, lowest_price=low_v, highest_price=high_v,
+                        enhancement_count=enh_v, timeframe=timeframe, url=url
                     )
                     results.append(rec)
                     print(f"[STAR] [{fs:02d}->{fs+1:02d}] close={close_v} low={low_v} high={high_v} count={enh_v}")
                     extra = 300 if fs in (sf_from, sf_from+1, 6) else 0
                     page.wait_for_timeout(int(delay_sec*1000) + extra)
 
-            # === Cubes ===
-            if mode in ("cube", "both"):
-                # 暖機一個 cube
+            # Cubes
+            if mode in ("cube","both"):
                 if warmup:
                     warm_url = build_url(item_id, 1, cube_subtypes[0], None)
                     try:
@@ -596,18 +633,11 @@ def run_batch(
 
                     rec = DPRecord(
                         ts_utc=datetime.now(timezone.utc).isoformat(),
-                        item_id=item_id,
-                        item_name=item_name,
-                        upgrade_type=1,
-                        upgrade_subtype=st,
-                        from_star=None,
-                        to_star=None,
-                        close_price=close_v,
-                        lowest_price=low_v,
-                        highest_price=high_v,
-                        enhancement_count=enh_v,
-                        timeframe=timeframe,
-                        url=url,
+                        item_id=item_id, item_name=item_name,
+                        upgrade_type=1, upgrade_subtype=st,
+                        from_star=None, to_star=None,
+                        close_price=close_v, lowest_price=low_v, highest_price=high_v,
+                        enhancement_count=enh_v, timeframe=timeframe, url=url
                     )
                     results.append(rec)
                     name = next((k for k,v in CUBE_PRESETS.items() if v == st), st)
@@ -617,9 +647,7 @@ def run_batch(
         context.close()
         browser.close()
 
-    # 寫檔
     if results:
-        # 若有索引檔路徑，回存（可能新增了 max_star 或名稱）
         if index.path:
             try:
                 index.dump()
@@ -628,11 +656,12 @@ def run_batch(
                 print(f"[INDEX] 索引寫入失敗：{e}")
 
         save_sqlite(db_path, results)
-        if csv_path:
-            save_csv(csv_path, results)
+        # CSV 可選
+        # if csv_path: save_csv(csv_path, results)
+
     return results
 
-# ===================== CLI =====================
+# ===================== CLI（可選） =====================
 
 def parse_ids_or_names(args) -> List[str]:
     vals: List[str] = []
@@ -645,7 +674,6 @@ def parse_ids_or_names(args) -> List[str]:
                 vals.append(t)
     if args.item_id:
         vals.append(args.item_id.strip())
-    # 去重保序
     seen = set(); out = []
     for v in vals:
         if v not in seen:
@@ -667,30 +695,21 @@ def parse_cube_subtypes(args) -> List[str]:
     return list(CUBE_PRESETS.values())
 
 def main():
-    ap = argparse.ArgumentParser(description="MSU Dynamic Pricing scraper (Star/Cube/Both + Index + AutoStar)")
-    # 輸入（可用名稱或ID）
+    ap = argparse.ArgumentParser(description="MSU Dynamic Pricing scraper (Star/Cube/Both + Index + AutoStar + Stats)")
     ap.add_argument("--item-id", default=None)
     ap.add_argument("--item-ids", default=None, help="逗號分隔；可填名稱或ID")
     ap.add_argument("--item-ids-file", default=None, help="每行一個 名稱或ID")
     ap.add_argument("--names-mode", action="store_true", help="把輸入視為『名稱』而非 ID")
-    ap.add_argument("--index", default="items_index.json", help="名稱/ID/星數 索引檔路徑")
-
-    # 模式
-    ap.add_argument("--mode", default="star", choices=["star","cube","both"])
-
-    # Star Force 範圍（若 --auto-star 則忽略此參數）
+    ap.add_argument("--index", default="items_index.json", help="名稱/ID/星數 索引檔")
+    ap.add_argument("--mode", default="both", choices=["star","cube","both"])
     ap.add_argument("--from-star", type=int, default=0)
     ap.add_argument("--to-star", type=int, default=19)
     ap.add_argument("--auto-star", action="store_true", help="自動從索引或頁面偵測最大星數")
-
-    # Cubes 子型態
     ap.add_argument("--cube-presets", default=None, help="red,black,bonus 或 all")
-    ap.add_argument("--cube-subtypes", default=None, help="自訂代碼，逗號分隔，如 5062009,5062010")
-
-    # 其它
-    ap.add_argument("--timeframe", default="20m", choices=["20m", "1H", "1D", "1W", "1M"])
+    ap.add_argument("--cube-subtypes", default=None, help="自訂代碼，逗號分隔")
+    ap.add_argument("--timeframe", default="20m", choices=["20m","1H","1D","1W","1M"])
     ap.add_argument("--db", default="msu_dynamic_pricing.sqlite")
-    ap.add_argument("--csv", default="msu_dynamic_pricing.csv")
+    ap.add_argument("--csv", default=None)  # 預設不輸出 csv（以 DB+統計為主）
     ap.add_argument("--headless", action="store_true", default=False)
     ap.add_argument("--delay", type=float, default=0.7)
     ap.add_argument("--no-block-trackers", action="store_true")
@@ -700,7 +719,6 @@ def main():
     ap.add_argument("--reload-on-try", type=int, default=4)
     ap.add_argument("--settle-ms", type=int, default=600)
     ap.add_argument("--no-warmup", action="store_true")
-
     args = ap.parse_args()
 
     ids_or_names = parse_ids_or_names(args)
@@ -711,7 +729,7 @@ def main():
 
     run_batch(
         item_ids=ids_or_names,
-        upgrade_type=0 if args.mode=="star" else (1 if args.mode=="cube" else 0),
+        upgrade_type=0,
         cube_subtypes=cube_subtypes,
         star_range=(args.from_star, args.to_star),
         timeframe=args.timeframe,
